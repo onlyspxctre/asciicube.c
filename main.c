@@ -30,9 +30,9 @@ static inline float calculateX(float a, float b, float c) {
     register double sin_rY = sin(rY);
     register double sin_rZ = sin(rZ);
     register double cos_rZ = cos(rZ);
-    return a * cos(rY) * cos_rZ +
-           b * (sin_rX * sin_rY * cos_rZ + sin_rZ * cos_rX) +
-           c * (sin_rX * sin_rZ - sin_rY * cos_rX * cos_rZ);
+    return (float) (a * cos(rY) * cos_rZ +
+                    b * (sin_rX * sin_rY * cos_rZ + sin_rZ * cos_rX) +
+                    c * (sin_rX * sin_rZ - sin_rY * cos_rX * cos_rZ));
 }
 
 static inline float calculateY(float a, float b, float c) {
@@ -41,18 +41,18 @@ static inline float calculateY(float a, float b, float c) {
     register double sin_rY = sin(rY);
     register double sin_rZ = sin(rZ);
     register double cos_rZ = cos(rZ);
-    return a * sin_rZ * cos(rY) +
-           b * (sin_rX * sin_rY * sin_rZ - cos_rX * cos_rZ) -
-           c * (sin_rX * cos_rZ + sin_rY * sin_rZ * cos_rX);
+    return (float) (a * sin_rZ * cos(rY) +
+                    b * (sin_rX * sin_rY * sin_rZ - cos_rX * cos_rZ) -
+                    c * (sin_rX * cos_rZ + sin_rY * sin_rZ * cos_rX));
 }
 
 static inline float calculateZ(float a, float b, float c) {
     register double cos_rY = cos(rY);
-    return a * sin(rY) - b * sin(rX) * cos_rY + c * cos(rX) * cos_rY;
+    return (float) (a * sin(rY) - b * sin(rX) * cos_rY + c * cos(rX) * cos_rY);
 }
 
-static inline float screenX(float x) { return (x + 1) / 2 * WIDTH; }
-static inline float screenY(float y) { return (1 - (y + 1) / 2) * HEIGHT; }
+static inline float screenX(float x) { return (x + 1) / 2 * (float) width; }
+static inline float screenY(float y) { return (1 - (y + 1) / 2) * (float) height; }
 
 static inline void calculateForSurface(float cubeX, float cubeY, float cubeZ,
                                        char ch) {
@@ -61,8 +61,8 @@ static inline void calculateForSurface(float cubeX, float cubeY, float cubeZ,
     float z = calculateZ(cubeX, cubeY, cubeZ) + DISTANCE_FROM_CAM;
 
     float ooz = 1 / z;
-    int xp = screenX(x * ooz);
-    int yp = screenY(y * ooz * 1.75);
+    int xp = (int) screenX(x * ooz);
+    int yp = (int) screenY(y * ooz * 1.75f);
 
     int idx = xp + yp * WIDTH;
     if (idx < 0 || idx >= WIDTH * HEIGHT || ooz <= zbuf[idx]) {
@@ -95,9 +95,9 @@ int main(void) {
         memset(buf, BACKGROUND_CHAR, WIDTH * HEIGHT * sizeof(*buf));
         memset(zbuf, 0, WIDTH * HEIGHT * sizeof(*zbuf));
 
-        for (float cubeX = -CUBE_WIDTH; cubeX < CUBE_WIDTH; cubeX += 0.005) {
+        for (float cubeX = -CUBE_WIDTH; cubeX < CUBE_WIDTH; cubeX += 0.005f) {
             for (float cubeY = -CUBE_WIDTH; cubeY < CUBE_WIDTH;
-                 cubeY += 0.005) {
+                 cubeY += 0.005f) {
                 calculateForSurface(cubeX, cubeY, -CUBE_WIDTH, '@');
                 calculateForSurface(cubeX, -CUBE_WIDTH, cubeY, ';');
                 calculateForSurface(-CUBE_WIDTH, cubeX, cubeY, '$');
@@ -121,19 +121,19 @@ int main(void) {
 
         clock_gettime(CLOCK_MONOTONIC, &now);
         double dt =
-            (now.tv_sec - last.tv_sec) + (now.tv_nsec - last.tv_nsec) / 1e9;
+            (double) (now.tv_sec - last.tv_sec) + (double) (now.tv_nsec - last.tv_nsec) / 1e9;
         double elapsed =
-            (now.tv_sec - start.tv_sec) + (now.tv_nsec - start.tv_nsec) / 1e9;
+            (double) (now.tv_sec - start.tv_sec) + (double) (now.tv_nsec - start.tv_nsec) / 1e9;
         if (dt > 0.05) dt = 0.05;
         last = now;
 
-        rX += -0.25 * M_PI * dt;
-        rY += 0.25 * M_PI * dt;
-        rZ += 0.01 * M_PI * dt;
+        rX += (float) (-0.25 * M_PI * dt);
+        rY += (float) (0.25 * M_PI * dt);
+        rZ += (float) (0.01 * M_PI * dt);
 
-        if (elapsed < 1 / FPS) {
+        if (elapsed < 1.0 / FPS) {
             struct timespec rem = {
-                .tv_nsec = (long) (1e9 * (1 / FPS - elapsed)),
+                .tv_nsec = (long) (1e9 * (1.0 / FPS - elapsed)),
             };
             nanosleep(&rem, NULL);
         }
