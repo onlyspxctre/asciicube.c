@@ -1,24 +1,27 @@
 #include <math.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <time.h>
 #include <unistd.h>
-#include <signal.h>
 
 #define FPS 60
 #define TARGET_NS 1e9 / FPS
 
-#define WIDTH 160
-#define HEIGHT 44
-
-#define CUBE_WIDTH 0.25
+#define MAX_WIDTH 320
+#define MAX_HEIGHT 76
+int width;
+int height;
+#define CUBE_WIDTH 0.25 // static cube width for now for testing
+// int cube_width;
 
 #define DISTANCE_FROM_CAM 1
 #define BACKGROUND_CHAR '.'
 
-char buf[WIDTH * HEIGHT];
-float zbuf[WIDTH * HEIGHT];
+char buf[MAX_WIDTH * MAX_HEIGHT];
+float zbuf[MAX_WIDTH * MAX_HEIGHT];
 
 float rX = 0;
 float rY = 0;
@@ -64,8 +67,8 @@ static inline void calculateForSurface(float cubeX, float cubeY, float cubeZ,
     int xp = (int) screenX(x * ooz);
     int yp = (int) screenY(y * ooz * 1.75f);
 
-    int idx = xp + yp * WIDTH;
-    if (idx < 0 || idx >= WIDTH * HEIGHT || ooz <= zbuf[idx]) {
+    int idx = xp + yp * width;
+    if (idx < 0 || idx >= width * height || ooz <= zbuf[idx]) {
         return;
     }
 
@@ -73,27 +76,52 @@ static inline void calculateForSurface(float cubeX, float cubeY, float cubeZ,
     buf[idx] = ch;
 }
 
-void handle_interrupt(int signum) {
+void setup_window(void) {
+    struct winsize w;
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) != 0) {
+        perror("ioctl()");
+        exit(1);
+    }
+    width = w.ws_col < MAX_WIDTH ? w.ws_col : MAX_WIDTH;
+    height = w.ws_row < MAX_HEIGHT ? w.ws_row : MAX_HEIGHT;
+    fputs("\x1b[2J\e[?1049h\x1b[?7l\x1b[?25l", stdout);
+    fflush(stdout);
+}
+
+void die(void) {
     fputs("\e[?1049l\x1b[?7h\x1b[?25h", stdout);
     exit(0);
 }
 
+void handle_interrupt(int signum) {
+    (void) signum;
+
+    die();
+}
+
+void handle_resize(int signum) {
+    (void) signum;
+
+    setup_window();
+}
+
 int main(void) {
     signal(SIGINT, handle_interrupt);
-    fputs("\x1b[2J\e[?1049h\x1b[?7l\x1b[?25l", stdout);
-    fflush(stdout);
+    signal(SIGWINCH, handle_resize);
+
+    setup_window();
 
     struct timespec last;
     struct timespec start;
     struct timespec now;
-    char output_buf[3 + (WIDTH + 1) * (HEIGHT)];
     clock_gettime(CLOCK_MONOTONIC, &last);
 
     while (1) {
+        char output_buf[3 + (width + 1) * (height)];
         clock_gettime(CLOCK_MONOTONIC, &start);
 
-        memset(buf, BACKGROUND_CHAR, WIDTH * HEIGHT * sizeof(*buf));
-        memset(zbuf, 0, WIDTH * HEIGHT * sizeof(*zbuf));
+        memset(buf, BACKGROUND_CHAR, MAX_WIDTH * MAX_HEIGHT * sizeof(*buf));
+        memset(zbuf, 0, MAX_WIDTH * MAX_HEIGHT * sizeof(*zbuf));
 
         for (float cubeX = -CUBE_WIDTH; cubeX < CUBE_WIDTH; cubeX += 0.005f) {
             for (float cubeY = -CUBE_WIDTH; cubeY < CUBE_WIDTH;
@@ -112,8 +140,8 @@ int main(void) {
         output_buf[offset++] = '\x1b';
         output_buf[offset++] = '[';
         output_buf[offset++] = 'H';
-        for (size_t i = 0; i < WIDTH * HEIGHT; ++i) {
-            if (i % WIDTH == 0) output_buf[offset++] = '\n';
+        for (int i = 0; i < width * height; ++i) {
+            if (i % width == 0) output_buf[offset++] = '\n';
             output_buf[offset++] = buf[i];
         }
         write(STDOUT_FILENO, &output_buf, sizeof(output_buf));
