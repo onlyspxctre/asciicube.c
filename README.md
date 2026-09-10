@@ -5,7 +5,7 @@
 
 </div>
 
-A spinning cube rendered in the terminal with ASCII characters, written in **pure C**. Calculates the positions of points on the 3D cube with rotation matrices and linear algebra, and then projects these points onto a 2D surface (aka the terminal screen) with each surface represented by an ASCII character. Inspired heavily by <see below>.
+A spinning cube rendered in the terminal with ASCII characters, written in **pure C**. Calculates the positions of points on the 3D cube with rotation matrices and linear algebra, and then projects these points onto a 2D surface (aka the terminal screen) with each surface represented by an ASCII character. Inspired heavily by \<see below\>.
 
 This project notably comes with a bunch of improvements compared to **cube.c**, namely:
 
