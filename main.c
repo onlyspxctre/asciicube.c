@@ -1,5 +1,6 @@
 #include <math.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,6 +27,8 @@ float zbuf[MAX_WIDTH * MAX_HEIGHT];
 float rX = 0;
 float rY = 0;
 float rZ = 0;
+
+static bool reset_flag = false;
 
 static inline float calculateX(float a, float b, float c) {
     register double sin_rX = sin(rX);
@@ -103,6 +106,7 @@ void handle_resize(int signum) {
     (void) signum;
 
     setup_window();
+    reset_flag = true;
 }
 
 int main(void) {
@@ -116,6 +120,7 @@ int main(void) {
     struct timespec now;
     clock_gettime(CLOCK_MONOTONIC, &last);
 
+loop_start:
     while (1) {
         char output_buf[3 + (width + 1) * (height)];
         clock_gettime(CLOCK_MONOTONIC, &start);
@@ -141,6 +146,10 @@ int main(void) {
         output_buf[offset++] = '[';
         output_buf[offset++] = 'H';
         for (int i = 0; i < width * height; ++i) {
+            if (reset_flag) {
+                reset_flag = false;
+                goto loop_start;
+            }
             if (i % width == 0) output_buf[offset++] = '\n';
             output_buf[offset++] = buf[i];
         }
